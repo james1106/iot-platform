@@ -88,7 +88,7 @@ public class CommonController extends BaseController {
      */
     @RequestMapping(value = "/getDistrictSamelevel/{idKey}")
     public List<SysDistrict> getDistrictSamelevel(@PathVariable Integer idKey) {
-        return sysDistrictService.selectDistrictSamelevel(idKey);
+        return sysDistrictService.selectSameLevelNodes(idKey);
     }
 
     /**
@@ -119,7 +119,7 @@ public class CommonController extends BaseController {
                                                        @PathVariable("constantId") String constantId) {
         List<GeneralConstant> list = null;
         switch (constantId) {
-            case "HTTP_METHOR" :
+            case "HTTP_METHOD" :
                 list = Constants.HTTP_METHOR;
                 break;
             case "RECEIVED_DATA_FORMAT" :

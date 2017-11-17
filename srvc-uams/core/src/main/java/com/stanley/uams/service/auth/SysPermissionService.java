@@ -1,36 +1,38 @@
 package com.stanley.uams.service.auth;
 
 
-import com.stanley.common.spring.BaseService;
+import com.stanley.uams.domain.auth.SysResource;
+import com.stanley.uams.domain.auth.SysUserRole;
 import com.stanley.uams.mapper.master.auth.SysPermissionMapper;
-import com.stanley.uams.shiro.MyShiroRealm;
-import com.stanley.uams.shiro.ShiroService;
+import com.stanley.uams.service.CommonService;
 import com.stanley.utils.ResultBuilderUtil;
+import com.stanley.utils.ShiroSessionUtil;
 import com.stanley.utils.StringUtils;
-import org.apache.shiro.SecurityUtils;
-import org.apache.shiro.mgt.RealmSecurityManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.Resource;
 import java.sql.Timestamp;
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
- * 用户角色对应管理
+ * 授权管理，该功能比较特殊，没有domain，也不继承Base
  * @Description
- * @date 2016-05-17
+ * @date 2017-10-23
  * @since 1.0 
  * @version 1.0  
- * @author lcw
+ * @author ts
  */
 @Service
-public class SysPermissionService extends BaseService{
-
+public class SysPermissionService {
 	@Resource
 	private SysPermissionMapper sysPermissionMapper;
 	@Resource
-	private ShiroService shiroService;
+	private SysUserRoleService sysUserRoleService;
+	@Resource
+	private CommonService commonService;
 
 	@Transactional
 	public String update(Integer roleId,String dataIds) {
@@ -39,17 +41,18 @@ public class SysPermissionService extends BaseService{
 		{
 			Map<String, Object> map = new HashMap<String, Object>();
 			map.put("roleId", roleId);
-			map.put("createId", getUserId());
+			map.put("createId", ShiroSessionUtil.getUserId());
 			map.put("createDt", new Timestamp(System.currentTimeMillis()));
 			map.put("dataListID", Arrays.asList(dataIds.split(",")));
 			sysPermissionMapper.insert(map);
 		}
-		shiroService.clearUserAuthByUserId(roleId);
+		//更新权限缓存
+		this.clearUserAuthByUserId(roleId);
 		return ResultBuilderUtil.RESULT_SUCCESS;
 	}
 
-	public List<Map<String,Object>> selectResourcesByRoleId(Integer roleId) {
-		return sysPermissionMapper.selectResourcesByRoleId(roleId);
+	public List<SysResource> selectResourcesByRoleId(Integer roleId) {
+		return sysPermissionMapper.selectResourcesByRole(roleId);
 	}
 
 	public List<Map<String, Object>> queryAll(Integer roleId, Integer parentId) {
@@ -74,6 +77,24 @@ public class SysPermissionService extends BaseService{
 				children.forEach(c -> finalList.add(c));
 		});
 		return finalList;
+	}
+
+
+	/**
+	 * @Description 权限修改后，清除角色对应的用户权限信息缓存redis
+	 * @date 2017/9/27
+	 * @author 13346450@qq.com 童晟
+	 * @param
+	 * @return
+	 */
+	private void clearUserAuthByUserId(Integer roleId) {
+		SysUserRole sysUserRole = new SysUserRole();
+		sysUserRole.setRoleId(roleId);
+		List<SysUserRole> userList = sysUserRoleService.selectAllBySelective(sysUserRole);
+		if(userList.isEmpty())
+			return;
+		List<Integer> userIds = userList.stream().flatMap(userRole-> Stream.of(userRole.getUserId())).collect(Collectors.toList());
+		commonService.clearShiroCachedAuthorizationInfo(userIds);
 	}
 
 }

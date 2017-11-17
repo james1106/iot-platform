@@ -1,5 +1,6 @@
 package com.stanley.uams.web.basic;
 
+import com.stanley.common.annotation.WriteLogs;
 import com.stanley.common.domain.SearchParam;
 import com.stanley.common.domain.mybatis.Page;
 import com.stanley.common.spring.BaseController;
@@ -7,6 +8,7 @@ import com.stanley.uams.domain.auth.SysUser;
 import com.stanley.uams.domain.basic.SysOpenApi;
 import com.stanley.uams.domain.basic.SysOpenApiVO;
 import com.stanley.uams.service.basic.SysOpenApiService;
+import com.stanley.utils.Constants;
 import com.stanley.utils.ExcelUtil;
 import org.apache.shiro.authz.annotation.RequiresPermissions;
 import org.springframework.web.bind.annotation.*;
@@ -38,6 +40,7 @@ public class SysOpenApiController extends BaseController {
 	 */
 	@RequestMapping(value = "insert", method = RequestMethod.POST)
 	@RequiresPermissions("system:SysOpenApi:insert")
+	@WriteLogs(Constants.OPERITION_INSERT)
 	public String insert(SysOpenApi sysOpenApi){
 		return sysOpenApiService.insert(sysOpenApi);
 	}
@@ -50,6 +53,7 @@ public class SysOpenApiController extends BaseController {
 	 */
 	@RequestMapping(value="delete/{idKey}")
 	@RequiresPermissions("system:SysOpenApi:delete")
+	@WriteLogs(Constants.OPERITION_DELETE)
 	public String delete(@PathVariable Integer idKey){
 		return sysOpenApiService.delete(idKey);
 	}
@@ -61,6 +65,7 @@ public class SysOpenApiController extends BaseController {
 	 */
 	@RequestMapping(value="deleteBatch")
 	@RequiresPermissions("system:SysOpenApi:delete")
+	@WriteLogs(Constants.OPERITION_DELETE_BATCH)
 	public String deleteBatch(SearchParam searchParam){
 		return sysOpenApiService.deleteBatch(searchParam.getCheckedIds());
 	}
@@ -72,6 +77,7 @@ public class SysOpenApiController extends BaseController {
 	 */
 	@RequestMapping(value = "update", method = RequestMethod.POST)
 	@RequiresPermissions("system:SysOpenApi:update")
+	@WriteLogs(Constants.OPERITION_UPDATE)
 	public String update(SysOpenApi sysOpenApi){
 		return sysOpenApiService.update(sysOpenApi);
 	}
@@ -102,19 +108,6 @@ public class SysOpenApiController extends BaseController {
 	public void toExcel(HttpServletResponse response, SearchParam searchParam){
 		ExcelUtil.outputExcel(response, "开放接口接入数据", sysOpenApiService.toExcel(searchParam));
 	}
-
-	/**
-	 * 查询所有角色
-	 * return
-	 * @author 13346450@qq.com 童晟
-	 * @date 2017-01-06
-	 */
-	@RequestMapping(value = "listAll")
-	@RequiresPermissions("system:SysOpenApi:select")
-	public List<SysOpenApi> listAll(){
-		return sysOpenApiService.selectAllBySelective(null);
-	}
-
 
 	/**
 	 * 检查用户标识是否已存在

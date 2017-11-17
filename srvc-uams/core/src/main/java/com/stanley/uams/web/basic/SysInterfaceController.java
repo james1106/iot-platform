@@ -1,12 +1,14 @@
 package com.stanley.uams.web.basic;
 
 
+import com.stanley.common.annotation.WriteLogs;
 import com.stanley.common.domain.SearchParam;
 import com.stanley.common.domain.mybatis.Page;
 import com.stanley.common.spring.BaseController;
 import com.stanley.uams.domain.basic.SysInterface;
 import com.stanley.uams.domain.basic.SysInterfaceVO;
 import com.stanley.uams.service.basic.SysInterfaceService;
+import com.stanley.utils.Constants;
 import com.stanley.utils.ExcelUtil;
 import org.apache.shiro.authz.annotation.RequiresPermissions;
 import org.springframework.web.bind.annotation.*;
@@ -38,6 +40,7 @@ public class SysInterfaceController extends BaseController {
 	 */
 	@RequestMapping(value = "insert", method = RequestMethod.POST)
 	@RequiresPermissions("system:SysInterface:insert")
+	@WriteLogs(Constants.OPERITION_INSERT)
 	public String insert(SysInterface sysInterface){
 		return sysInterfaceService.insert(sysInterface);
 	}
@@ -50,6 +53,7 @@ public class SysInterfaceController extends BaseController {
 	 */
 	@RequestMapping(value="delete/{idKey}")
 	@RequiresPermissions("system:SysInterface:delete")
+	@WriteLogs(Constants.OPERITION_DELETE)
 	public String delete(@PathVariable Integer idKey){
 		return sysInterfaceService.delete(idKey);
 	}
@@ -61,6 +65,7 @@ public class SysInterfaceController extends BaseController {
 	 */
 	@RequestMapping(value="deleteBatch")
 	@RequiresPermissions("system:SysInterface:delete")
+	@WriteLogs(Constants.OPERITION_DELETE_BATCH)
 	public String deleteBatch(SearchParam searchParam){
 		return sysInterfaceService.deleteBatch(searchParam.getCheckedIds());
 	}
@@ -72,6 +77,7 @@ public class SysInterfaceController extends BaseController {
 	 */
 	@RequestMapping(value = "update", method = RequestMethod.POST)
 	@RequiresPermissions("system:SysInterface:update")
+	@WriteLogs(Constants.OPERITION_UPDATE)
 	public String update(SysInterface sysInterface){
 		return sysInterfaceService.update(sysInterface);
 	}
@@ -103,18 +109,6 @@ public class SysInterfaceController extends BaseController {
 		ExcelUtil.outputExcel(response, "外部接口配置数据", sysInterfaceService.toExcel(searchParam));
 	}
 
-	/**
-	 * 查询所有角色
-	 * return
-	 * @author ts
-	 * @date 2016-10-19
-	 */
-	@RequestMapping(value = "listAll")
-	@RequiresPermissions("system:SysInterface:select")
-	public List<SysInterface> listAll(){
-		return sysInterfaceService.selectAllBySelective(null);
-	}
-	
 	/**
 	 * 运行接口
 	 * @param searchParam

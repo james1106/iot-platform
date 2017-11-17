@@ -1,5 +1,6 @@
 package com.stanley.uams.shiro;
 
+import com.stanley.uams.domain.auth.SysResource;
 import com.stanley.uams.domain.auth.SysUser;
 import com.stanley.uams.service.auth.SysPermissionService;
 import com.stanley.uams.service.auth.SysRoleService;
@@ -23,7 +24,6 @@ import org.springframework.data.redis.core.ValueOperations;
 import javax.annotation.Resource;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -51,7 +51,7 @@ public class MyShiroRealm extends AuthorizingRealm {
     private StringRedisTemplate redisTemplate;
 
     /**
-     * @Description 读取授权资源，把该用户对应角色的权限表达式取出来放到SimpleAuthorizationInfo
+     * @Description 授权资源，把该用户对应角色的权限表达式取出来放到SimpleAuthorizationInfo
      * @date 2017/8/25
      * @author 13346450@qq.com 童晟
      * @param principalCollection
@@ -60,28 +60,29 @@ public class MyShiroRealm extends AuthorizingRealm {
     @Override
     protected AuthorizationInfo doGetAuthorizationInfo(PrincipalCollection principalCollection) {
         SysUser user = (SysUser) SecurityUtils.getSubject().getPrincipal();
-        List<String> permissionList = new ArrayList<String>();
+        List<String> permissionList = new ArrayList<>();
         String[] roleArray = sysUserService.selectByIdkey(user.getIdKey()).getRoleIds().split(",");
-        List<String> roleList = new ArrayList<String>();
+        List<String> roleList = new ArrayList<>();
         for(String roleId : roleArray){
             roleList.add(sysRoleService.selectByIdkey(Integer.parseInt(roleId)).getRoleName());
-            List<Map<String,Object>> list = sysPermissionService.selectResourcesByRoleId(Integer.parseInt(roleId));
+            List<SysResource> list = sysPermissionService.selectResourcesByRoleId(Integer.parseInt(roleId));
             if (!list.isEmpty()){
-                for(Map<String,Object> map : list){
-                    String expression = String.valueOf(map.get("expression"));
+                list.forEach(sysResource -> {
+                    String expression = sysResource.getExpression();
                     if(!StringUtils.isNull(expression)){
                         if(!permissionList.contains(expression)){
                             permissionList.add(expression);
                         }
                     }
-                }
+                });
             }
         }
         SimpleAuthorizationInfo info = new SimpleAuthorizationInfo();
         info.addRoles(roleList);
         info.addStringPermissions(permissionList);
         log.debug("当前用户({}),拥有的权限(角色组)：{} , (资源组)：{}",user.getAccount(),
-                String.join(",",roleList),permissionList.stream().collect(Collectors.joining(",")));
+                String.join(",",roleList),
+                permissionList.stream().collect(Collectors.joining(",")));
         return info;
     }
 
@@ -98,7 +99,6 @@ public class MyShiroRealm extends AuthorizingRealm {
     protected AuthenticationInfo doGetAuthenticationInfo(AuthenticationToken authenticationToken) throws AuthenticationException {
         //获取基于用户名和密码的令牌，实际上authenticationToken是从LoginController里面currentUser.login(token)传过来的,两个token的引用都是一样的
         UsernamePasswordToken token = (UsernamePasswordToken)authenticationToken;
-        log.debug("当前Subject时获取到UsernamePasswordToken：{}",ReflectionToStringBuilder.toString(token, ToStringStyle.MULTI_LINE_STYLE));
         String name = (String) token.getPrincipal();
         ValueOperations<String, String> opsForValue = redisTemplate.opsForValue();
         //先判断有无锁定
@@ -128,23 +128,11 @@ public class MyShiroRealm extends AuthorizingRealm {
     }
 
     /**
-     * 清空当前用户权限信息
+     * 清空指定用户的权限缓存
      */
-    public  void clearCachedAuthorizationInfo() {
-        PrincipalCollection principalCollection = SecurityUtils.getSubject().getPrincipals();
-        SimplePrincipalCollection principals = new SimplePrincipalCollection(
-                principalCollection, getName());
-        super.clearCachedAuthorizationInfo(principals);
+    public void clearCachedAuthorizationInfo(List<SimplePrincipalCollection> list) {
+        list.forEach(simplePrincipalCollection -> super.clearCachedAuthorizationInfo(simplePrincipalCollection));
+        log.debug("角色对应的{}个登录用户的权限缓存已清空",list.size());
     }
-    /**
-     * 指定principalCollection 清除
-     */
-    public void clearCachedAuthorizationInfo(PrincipalCollection principalCollection) {
-        SimplePrincipalCollection principals = new SimplePrincipalCollection(
-                principalCollection, getName());
-        super.clearCachedAuthorizationInfo(principals);
-    }
-
-
 
 }

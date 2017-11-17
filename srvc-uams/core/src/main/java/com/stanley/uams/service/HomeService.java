@@ -7,7 +7,6 @@ import com.stanley.uams.domain.basic.SysOrganization;
 import com.stanley.uams.service.auth.SysRoleService;
 import com.stanley.uams.service.auth.SysUserService;
 import com.stanley.uams.service.basic.SysOrganizationService;
-import com.stanley.utils.EncryptUtil;
 import com.stanley.utils.ResultBuilderUtil;
 import com.stanley.utils.StringUtils;
 import com.stanley.utils.vcode.Captcha;
@@ -19,18 +18,15 @@ import org.apache.shiro.authc.*;
 import org.apache.shiro.session.Session;
 import org.apache.shiro.subject.Subject;
 import org.apache.shiro.web.util.WebUtils;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.ui.Model;
-import org.springframework.web.servlet.view.InternalResourceViewResolver;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
-import java.sql.Timestamp;
 import java.util.concurrent.TimeUnit;
 
 import static com.stanley.utils.Constants.SHIRO_LOGIN_COUNT;
@@ -53,6 +49,8 @@ public class HomeService extends BaseService {
     private SysOrganizationService sysOrganizationService;
     @Resource
     private SysRoleService sysRoleService;
+    @Value("${shiro.sessionTimeout}")
+    private long sessionTimeout;
 
     /**
      * @Description 调用shiro验证，如果MyShiroRealm认证通过，则不会进入此方法
@@ -79,7 +77,6 @@ public class HomeService extends BaseService {
         //每个Realm都能在必要时对提交的AuthenticationTokens作出反应
         //所以这一步在调用login(token)方法时,它会走到MyRealm.doGetAuthenticationInfo()方法中,具体验证方式详见此方法
         UsernamePasswordToken token = new UsernamePasswordToken(username, password, rememberMe);
-        log.debug("为验证登录用户而封装的Token：{}",ReflectionToStringBuilder.toString(token, ToStringStyle.MULTI_LINE_STYLE));
         Subject currentUser = SecurityUtils.getSubject();
         try {
             currentUser.login(token);
@@ -117,8 +114,8 @@ public class HomeService extends BaseService {
 
     /**
      * 设置当前登录信息
-     * session失效时间设为：1小时
      * 已登录成功后，设置session等
+     * session失效时间在此处设置，实测有效
      * @param model
      * @return
      */
@@ -129,7 +126,7 @@ public class HomeService extends BaseService {
         UserInfoBean userInfoBean = this.generateUserInfo(sysUser);
         Session session = SecurityUtils.getSubject().getSession();
         session.setAttribute("userInfo", userInfoBean);
-        session.setTimeout(3600000);
+        session.setTimeout(sessionTimeout);
         model.addAttribute("userInfo",userInfoBean);
         return "mainframe/mainPage";
     }
@@ -146,6 +143,19 @@ public class HomeService extends BaseService {
         SecurityUtils.getSubject().logout();
         return "redirect:/";
     }
+
+    /**
+     * @Description 踢出登录
+     * @date 2017/10/10
+     * @author 13346450@qq.com 童晟
+     * @param
+     * @return
+     */
+    public String kickout(Model model){
+        model.addAttribute("msg", "您的帐号已在另一地方登录，此登录被强制退出。");
+        return "mainframe/kickout";
+    }
+
 
     /**
      * @Description 获取验证码
